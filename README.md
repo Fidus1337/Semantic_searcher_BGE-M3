@@ -1,4 +1,4 @@
-# Product Matcher v4
+# Product Matcher
 
 Match competitor products to your catalog using neural networks.
 
