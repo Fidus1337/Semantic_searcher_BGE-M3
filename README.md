@@ -1,61 +1,95 @@
-# 🚀 Product Matcher GPU
+# Product Matcher v4
 
-A high-performance AI tool for semantic product matching (mapping competitor products to your internal catalog). Optimized for consumer GPUs (e.g., RTX 3050 4GB) but fully compatible with CPU.
+Match competitor products to your catalog using neural networks.
 
-## ⚡ Key Features
+## Algorithm
 
-* **Two-Stage Architecture:**
-    1.  **Retrieval:** Fast candidate search using vector embeddings (`BAAI/bge-m3` + FAISS).
-    2.  **Reranking:** Precision ranking using a Cross-Encoder (`BAAI/bge-reranker-v2-m3`).
-* **Optimized:** Uses FP16 precision to minimize VRAM usage.
-* **Smart Caching:** Indexes your product catalog once to speed up future runs.
+```
+Competitor Products              Your Catalog
+       ↓                              ↓
+   [BGE-M3]                       [BGE-M3]
+   Encoder                         Encoder
+       ↓                              ↓
+   Embeddings ──── FAISS ──── Embeddings
+                    ↓
+              Top-K candidates
+                    ↓
+            [BGE-Reranker-v2-m3]
+                    ↓
+               Best match
+```
 
-## 🛠 Installation
+**Stage 1 — Retrieval:** BGE-M3 creates embeddings, FAISS finds Top-K similar products.
 
-1.  **Prerequisites:** Python 3.8+.
-2.  **Install Dependencies:**
+**Stage 2 — Reranking:** Cross-encoder reranks candidates and selects the best match.
 
-    ```bash
-    pip install requirements.txt
-    ```
+## Quick Start
 
-    *(Optional: Install `faiss-gpu` for faster indexing if you have a compatible environment, otherwise `faiss-cpu` works fine).*
+```python
+from product_matcher import quick_match
 
-## 📂 Data Preparation
+results = quick_match(
+    competitor_csv='competitor.csv',
+    our_csv='our_products.csv',
+    output_csv='matches.csv'
+)
+```
 
-Place two CSV files in the project root directory:
+## Notebook Usage
 
-1.  `competitor_products.csv` — List of competitor products.
-2.  `our_products.csv` — List of your internal products.
+### 1. Configure settings (cell 5)
 
-**Format:** Standard CSV files. Ensure both files have a column containing the product names (e.g., `name` or `title`).
+```python
+COMPETITOR_FILE = "competitor_products.csv"
+OUR_FILE = "our_products.csv"
+COMPETITOR_COL_NAME = 'name'  # product name column
+OUR_COL_NAME = 'name'
+```
 
-## ⚙️ Configuration & Usage
+### 2. Run cells in order
 
-1.  Open `main.py` and locate the `if __name__ == "__main__":` block at the bottom.
-2.  Update the column names to match your CSV files:
+```
+1️⃣ Imports       — load libraries
+2️⃣ GPU Check     — verify GPU availability
+3️⃣ Core Class    — define matcher class
+5️⃣ Config        — your settings
+6️⃣ Load Data     — load CSV files
+7️⃣ Initialize    — create matcher
+8️⃣ Run Matching  — execute matching
+9️⃣ Results       — analyze and save
+```
 
-    ```python
-    COMPETITOR_COL_NAME = 'name'  # Column header in competitor_products.csv
-    OUR_COL_NAME = 'name'         # Column header in our_products.csv
-    ```
+## Parameters
 
-3.  Run the script:
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `threshold` | 0.5 | Confidence threshold (0-1) |
+| `top_k` | 5 | Candidates for reranking |
+| `encoder_batch` | 8 | Encoder batch size (4-8 for 4GB VRAM) |
+| `reranker_batch` | 16 | Reranker batch size |
+| `use_fp16` | True | FP16 precision to save memory |
 
-    ```bash
-    python main.py
-    ```
+## Output Format
 
-## 📊 Output
+| Column | Description |
+|--------|-------------|
+| `competitor_product` | Competitor product name |
+| `our_product` | Matched product |
+| `rerank_score` | Confidence score (0-1) |
+| `match_status` | `matched` / `low_confidence` |
 
-The script generates `results_gpu_matched.csv` containing:
+## Requirements
 
-* `competitor_product`: Name of competitor product.
-* `our_product`: Name of our product.
-* `rerank_score`: Confidence score (0.0 to 1.0). Higher is better.
-* `match_status`: **matched** (high confidence) or **low_confidence**.
+- Python 3.10+
+- PyTorch with CUDA
+- sentence-transformers
+- faiss-cpu (or faiss-gpu)
+- pandas, numpy, tqdm
 
----
+```bash
+pip install -r requirements.txt
+```
 
-### 💡 Note
-On the first run, the script will download the necessary AI models (~3GB). This may take a few minutes. Subsequent runs will be much faster.
+## GPU
+
+Optimized for GPUs with 4GB VRAM (RTX 3050 and similar). Works on CPU too, but slower.
